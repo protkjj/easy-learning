@@ -17,5 +17,5 @@ export const router = createBrowserRouter(
     { path: "/wrong-answers", Component: WrongAnswers },
     { path: "/dashboard", Component: Dashboard },
   ],
-  { basename: "/easy-learning" }
+  { basename: import.meta.env.BASE_URL.replace(/\/$/, "") || "/" }
 );

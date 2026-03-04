@@ -10,5 +10,5 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
-  base: '/easy-learning/',
+  base: process.env.VERCEL ? '/' : '/easy-learning/',
 })
