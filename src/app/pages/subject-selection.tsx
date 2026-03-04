@@ -137,6 +137,7 @@ export function SubjectSelection() {
             <button
               key={sub}
               onClick={() => handleSubjectClick(sub)}
+              aria-label={`${sub} 과목 선택`}
               className="bg-white rounded-xl p-4 shadow-sm hover:shadow-md transition-all border border-gray-100 text-left group"
             >
               <div className="flex items-center justify-between">

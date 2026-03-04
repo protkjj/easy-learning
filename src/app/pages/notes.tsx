@@ -53,8 +53,10 @@ export function Notes() {
   if (notes.length === 0) {
     return (
       <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-6">
-        <p className="text-gray-400 mb-4">아직 생성된 노트가 없습니다</p>
-        <Button onClick={() => navigate("/recording")}>녹음으로 돌아가기</Button>
+        <FileText className="w-12 h-12 text-gray-300 mb-4" />
+        <p className="text-gray-500 font-medium mb-1">아직 생성된 노트가 없습니다</p>
+        <p className="text-gray-400 text-sm mb-4 text-center">녹음 버튼을 눌러 강의를 녹음하고<br/>AI가 자동으로 필기해드립니다</p>
+        <Button onClick={() => navigate("/recording")} className="bg-indigo-600 hover:bg-indigo-700 text-white">녹음 시작하기</Button>
       </div>
     );
   }
@@ -64,7 +66,7 @@ export function Notes() {
       {/* Header */}
       <header className="bg-white border-b border-gray-200 px-6 py-4 sticky top-0 z-10">
         <div className="max-w-3xl mx-auto flex items-center justify-between">
-          <Button variant="ghost" size="icon" onClick={() => navigate("/recording")}>
+          <Button variant="ghost" size="icon" onClick={() => navigate("/")}>
             <ArrowLeft className="w-5 h-5" />
           </Button>
           <span className="font-medium">{subject} 노트</span>

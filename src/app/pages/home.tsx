@@ -1,11 +1,11 @@
 import { useNavigate } from "react-router";
-import { BookOpen, Settings } from "lucide-react";
+import { BookOpen, Settings, ArrowRight, Youtube } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { useApp } from "../../lib/store";
 
 export function Home() {
   const navigate = useNavigate();
-  const { setSchool } = useApp();
+  const { setSchool, subject, school, division } = useApp();
 
   const handleSelect = (school: string, route: string) => {
     setSchool(school);
@@ -15,7 +15,7 @@ export function Home() {
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white border-b border-gray-200 px-6 py-4">
-        <div className="max-w-md mx-auto flex items-center justify-between">
+        <div className="max-w-2xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2">
             <BookOpen className="w-6 h-6 text-[#6366f1]" />
             <h1 className="text-xl font-semibold">Easy Learning</h1>
@@ -26,11 +26,25 @@ export function Home() {
         </div>
       </header>
 
-      <main className="max-w-md mx-auto px-6 py-8">
+      <main className="max-w-2xl mx-auto px-6 py-8">
         <div className="mb-8">
           <h2 className="text-2xl font-semibold mb-2">학습을 시작하세요</h2>
           <p className="text-gray-600">카테고리를 선택해주세요</p>
         </div>
+
+        {subject && (
+          <div className="mb-6 bg-white rounded-2xl p-5 shadow-sm border border-indigo-100">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs text-indigo-500 font-medium mb-1">최근 학습 이어하기</p>
+                <p className="text-sm text-gray-700">이전 학습: {subject}</p>
+              </div>
+              <Button onClick={() => navigate("/recording")} className="bg-indigo-600 hover:bg-indigo-700 text-white text-sm">
+                이어하기 <ArrowRight className="w-4 h-4 ml-1" />
+              </Button>
+            </div>
+          </div>
+        )}
 
         <div className="space-y-4">
           <button
@@ -74,6 +88,16 @@ export function Home() {
             </Button>
             <Button variant="outline" className="flex-1" onClick={() => navigate("/dashboard")}>
               진도 트래커
+            </Button>
+          </div>
+          <div className="mt-3">
+            <Button
+              variant="outline"
+              className="w-full border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+              onClick={() => navigate("/youtube")}
+            >
+              <Youtube className="w-4 h-4 mr-2" />
+              YouTube 학습
             </Button>
           </div>
         </div>

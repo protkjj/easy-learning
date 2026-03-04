@@ -8,6 +8,7 @@ import { useApp } from "../../lib/store";
 import { CONFIG } from "../../lib/config";
 import { callAI, parseJSON, buildNoteSystem, generateDemoNote } from "../../lib/ai";
 import { saveNoteToNotion } from "../../lib/notion";
+import { toast } from "sonner";
 
 export function Recording() {
   const navigate = useNavigate();
@@ -249,33 +250,45 @@ export function Recording() {
     const text = transcript.trim();
     setProcessing(true);
 
-    const sys = buildNoteSystem(school!, division!, subject!, lang, divCfg.prompt);
-    const raw = await callAI([{ role: "user", content: `수업 내용: "${text}"` }], sys, apiKey, aiProvider);
-    const parsed = raw ? parseJSON(raw) : generateDemoNote(text, school!, division!, subject!);
+    try {
+      const sys = buildNoteSystem(school!, division!, subject!, lang, divCfg.prompt);
+      const raw = await callAI([{ role: "user", content: `수업 내용: "${text}"` }], sys, apiKey, aiProvider);
+      const parsed = raw ? parseJSON(raw) : generateDemoNote(text, school!, division!, subject!);
 
-    const noteObj = {
-      id: Date.now(),
-      time: formatTime(elapsed),
-      raw: text,
-      note: parsed?.note || text,
-      insight: parsed?.insight || null,
-      keywords: parsed?.keywords || [],
-      importance: parsed?.importance || "medium",
-      suneung_tip: parsed?.suneung_tip || null,
-      supplement: parsed?.supplement || null,
-      auto_search: parsed?.auto_search || null,
-      connections: parsed?.connections || null,
-    };
+      if (!parsed) {
+        toast.error("AI 분석 실패. 다시 시도해주세요.");
+        setProcessing(false);
+        return;
+      }
 
-    addNote(noteObj);
-    setTranscript("");
-    setProcessing(false);
+      const noteObj = {
+        id: Date.now(),
+        time: formatTime(elapsed),
+        raw: text,
+        note: parsed?.note || text,
+        insight: parsed?.insight || null,
+        keywords: parsed?.keywords || [],
+        importance: parsed?.importance || "medium",
+        suneung_tip: parsed?.suneung_tip || null,
+        supplement: parsed?.supplement || null,
+        auto_search: parsed?.auto_search || null,
+        connections: parsed?.connections || null,
+      };
 
-    // Notion background save
-    setNotionStatus("saving");
-    const ok = await saveNoteToNotion(noteObj, subject!, division!, professor);
-    setNotionStatus(ok ? "saved" : "failed");
-    setTimeout(() => setNotionStatus(null), 2000);
+      addNote(noteObj);
+      setTranscript("");
+      setProcessing(false);
+
+      // Notion background save
+      setNotionStatus("saving");
+      const ok = await saveNoteToNotion(noteObj, subject!, division!, professor);
+      setNotionStatus(ok ? "saved" : "failed");
+      setTimeout(() => setNotionStatus(null), 2000);
+    } catch (e) {
+      console.error("processNote failed:", e);
+      toast.error("AI 분석 실패. 다시 시도해주세요.");
+      setProcessing(false);
+    }
   };
 
   const handleFinish = () => {
@@ -287,28 +300,28 @@ export function Recording() {
   if (!subject) return null;
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-900 to-gray-800 text-white flex flex-col">
+    <div className="min-h-screen bg-gray-50 flex flex-col">
       {/* Header */}
-      <header className="px-6 py-4 border-b border-gray-700 shrink-0">
+      <header className="px-6 py-4 border-b border-gray-200 bg-white shrink-0">
         <div className="max-w-2xl mx-auto flex items-center justify-between">
-          <Button variant="ghost" size="icon" className="text-white hover:bg-white/10" onClick={() => navigate(-1)}>
+          <Button variant="ghost" size="icon" onClick={() => navigate("/")}>
             <ArrowLeft className="w-5 h-5" />
           </Button>
           <div className="text-center">
-            <h2 className="text-lg font-medium">{subject}</h2>
-            <p className="text-xs text-gray-400">{division} · {aiProvider === "demo" ? "데모" : aiProvider}</p>
+            <h2 className="text-lg font-medium text-gray-900">{subject}</h2>
+            <p className="text-xs text-gray-500">{division} · {aiProvider === "demo" ? "데모" : aiProvider}</p>
           </div>
           <div className="flex items-center gap-2">
             {notionStatus && (
               <span className={`text-xs px-2 py-1 rounded-full ${
-                notionStatus === "saving" ? "bg-yellow-900/50 text-yellow-300" :
-                notionStatus === "saved" ? "bg-green-900/50 text-green-300" :
-                "bg-red-900/50 text-red-300"
+                notionStatus === "saving" ? "bg-yellow-100 text-yellow-700" :
+                notionStatus === "saved" ? "bg-green-100 text-green-700" :
+                "bg-red-100 text-red-700"
               }`}>
                 {notionStatus === "saving" ? "저장중" : notionStatus === "saved" ? "저장됨" : "실패"}
               </span>
             )}
-            <Button variant="ghost" size="sm" className="text-red-300 hover:bg-red-500/20 text-xs" onClick={handleFinish}>
+            <Button variant="ghost" size="sm" className="text-red-600 hover:bg-red-50 text-xs" onClick={handleFinish}>
               완료 →
             </Button>
           </div>
@@ -323,7 +336,7 @@ export function Recording() {
             onClick={() => !isRecording && setSttMode("browser")}
             disabled={isRecording}
             className={`px-3 py-1.5 rounded-lg text-xs transition-colors ${
-              sttMode === "browser" ? "bg-indigo-600 text-white" : "bg-white/10 text-gray-400 hover:bg-white/20"
+              sttMode === "browser" ? "bg-indigo-600 text-white" : "bg-gray-200 text-gray-600 hover:bg-gray-300"
             }`}
           >
             <Mic className="w-3 h-3 inline mr-1" />
@@ -333,7 +346,7 @@ export function Recording() {
             onClick={() => !isRecording && setSttMode("whisper")}
             disabled={isRecording}
             className={`px-3 py-1.5 rounded-lg text-xs transition-colors ${
-              sttMode === "whisper" ? "bg-emerald-600 text-white" : "bg-white/10 text-gray-400 hover:bg-white/20"
+              sttMode === "whisper" ? "bg-emerald-600 text-white" : "bg-gray-200 text-gray-600 hover:bg-gray-300"
             }`}
           >
             <Zap className="w-3 h-3 inline mr-1" />
@@ -343,8 +356,8 @@ export function Recording() {
 
         {/* Timer */}
         <div className="text-center mb-6">
-          <div className="text-5xl font-bold tracking-wider mb-2">{formatTime(elapsed)}</div>
-          <div className="text-gray-400 text-sm">
+          <div className="text-5xl font-bold tracking-wider mb-2 text-gray-900">{formatTime(elapsed)}</div>
+          <div className="text-gray-500 text-sm">
             {isRecording ? (isPaused ? "일시정지됨" : (whisperProcessing ? "Whisper 변환중..." : "녹음 중...")) : "준비"}
           </div>
         </div>
@@ -355,7 +368,7 @@ export function Recording() {
             onClick={handleStartRecording}
             disabled={isRecording}
             className={`relative w-28 h-28 rounded-full flex items-center justify-center ${
-              isRecording ? "bg-red-500/20" : "bg-red-500 hover:bg-red-600"
+              isRecording ? "bg-red-500/20 opacity-50 cursor-not-allowed" : "bg-red-500 hover:bg-red-600"
             } transition-colors`}
             animate={isRecording && !isPaused ? { scale: [1, 1.05, 1] } : {}}
             transition={{ duration: 1.5, repeat: Infinity }}
@@ -377,7 +390,7 @@ export function Recording() {
             {[...Array(20)].map((_, i) => (
               <motion.div
                 key={i}
-                className={`w-1 rounded-full ${sttMode === "whisper" ? "bg-emerald-400" : "bg-red-400"}`}
+                className={`w-1 rounded-full ${sttMode === "whisper" ? "bg-emerald-500" : "bg-red-500"}`}
                 animate={!isPaused ? { height: [Math.random() * 30 + 8, Math.random() * 45 + 8, Math.random() * 30 + 8] } : {}}
                 transition={{ duration: 0.5, repeat: Infinity, delay: i * 0.05 }}
                 style={{ height: isPaused ? 8 : undefined }}
@@ -389,11 +402,11 @@ export function Recording() {
         {/* Controls */}
         {isRecording && (
           <div className="flex justify-center gap-4 mb-6">
-            <Button onClick={handlePause} size="lg" variant="outline" className="bg-white/10 border-white/20 text-white hover:bg-white/20">
+            <Button onClick={handlePause} size="lg" variant="outline" className="bg-white border-gray-300 text-gray-700 hover:bg-gray-100">
               <Pause className="w-5 h-5 mr-2" />
               {isPaused ? "재개" : "일시정지"}
             </Button>
-            <Button onClick={handleStopRecording} size="lg" variant="outline" className="bg-red-500/20 border-red-500/50 text-red-300 hover:bg-red-500/30">
+            <Button onClick={handleStopRecording} size="lg" variant="outline" className="bg-red-50 border-red-300 text-red-600 hover:bg-red-100">
               <Square className="w-5 h-5 mr-2" />
               중지
             </Button>
@@ -402,21 +415,29 @@ export function Recording() {
 
         {/* Interim text */}
         {interimText && (
-          <div className="text-center text-gray-400 text-sm italic mb-4">
+          <div className="text-center text-gray-500 text-sm italic mb-4">
             {interimText}
           </div>
         )}
 
+        {/* Live transcript display when recording */}
+        {isRecording && transcript && (
+          <div className="bg-indigo-50 border border-indigo-200 rounded-2xl p-4 mb-4">
+            <p className="text-xs text-indigo-600 font-medium mb-2">실시간 인식 텍스트</p>
+            <p className="text-gray-900 text-sm leading-relaxed">{transcript.slice(-200)}{interimText && <span className="text-indigo-500 italic"> {interimText}</span>}</p>
+          </div>
+        )}
+
         {/* Transcript / Manual Input */}
-        <div className="bg-gray-800/50 rounded-2xl p-5 border border-gray-700 flex-1 flex flex-col">
-          <h3 className="text-base font-medium mb-3">
+        <div className="bg-white rounded-2xl p-5 border border-gray-200 flex-1 flex flex-col shadow-sm">
+          <h3 className="text-base font-medium text-gray-900 mb-3">
             {isRecording ? "실시간 텍스트" : "수동 입력"}
           </h3>
           <Textarea
             value={transcript}
             onChange={(e) => setTranscript(e.target.value)}
             placeholder="강의 내용을 직접 입력하거나 버튼으로 음성 입력..."
-            className="bg-gray-900/50 border-gray-700 text-white placeholder:text-gray-500 flex-1 min-h-24 mb-4 resize-none"
+            className={`bg-gray-50 border-gray-200 text-gray-900 placeholder:text-gray-400 flex-1 ${isRecording ? "min-h-16" : "min-h-24"} mb-4 resize-none`}
           />
           <div className="flex gap-3">
             <Button

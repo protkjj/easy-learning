@@ -1,11 +1,12 @@
 import { useNavigate } from "react-router";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, AlertTriangle, CheckCircle, XCircle } from "lucide-react";
 import { Button } from "../components/ui/button";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useApp } from "../../lib/store";
 import { CONFIG } from "../../lib/config";
 import { callAI, parseJSON, buildQuizSystem, generateDemoQuiz } from "../../lib/ai";
 import { saveWrongAnswerToNotion } from "../../lib/notion";
+import { toast } from "sonner";
 
 export function Quiz() {
   const navigate = useNavigate();
@@ -16,6 +17,8 @@ export function Quiz() {
   const [score, setScore] = useState(0);
   const [done, setDone] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const userAnswers = useRef<(number | null)[]>([]);
 
   const isHighschool = school === "고등학교";
   const cfg = school ? CONFIG[school as keyof typeof CONFIG] : null;
@@ -27,11 +30,24 @@ export function Quiz() {
   const generateQuiz = async () => {
     if (!cfg || !division) return;
     setLoading(true);
-    const allNotes = notes.map((n: any) => n.note).join("\n");
-    const sys = buildQuizSystem(school!, division!, subject!, allNotes, cfg.quizType);
-    const raw = await callAI([{ role: "user", content: "퀴즈 만들어주세요." }], sys, apiKey, aiProvider);
-    const data = raw ? parseJSON(raw) || [] : generateDemoQuiz(school!, subject!);
-    setQuizData(data);
+    setError(false);
+    try {
+      const allNotes = notes.map((n: any) => n.note).join("\n");
+      const sys = buildQuizSystem(school!, division!, subject!, allNotes, cfg.quizType);
+      const raw = await callAI([{ role: "user", content: "퀴즈 만들어주세요." }], sys, apiKey, aiProvider);
+      const data = raw ? parseJSON(raw) || [] : generateDemoQuiz(school!, subject!);
+      if (!data || data.length === 0) {
+        setError(true);
+        toast.error("퀴즈를 생성할 수 없습니다. 다시 시도해주세요.");
+      } else {
+        setQuizData(data);
+        userAnswers.current = new Array(data.length).fill(null);
+      }
+    } catch (e) {
+      console.error("Quiz generation failed:", e);
+      setError(true);
+      toast.error("퀴즈 생성 중 오류가 발생했습니다.");
+    }
     setLoading(false);
   };
 
@@ -39,6 +55,7 @@ export function Quiz() {
     if (selected !== null) return;
     const correct = i === quizData[idx].answer;
     setSelected(i);
+    userAnswers.current[idx] = i;
     if (correct) setScore((s) => s + 1);
 
     // Save wrong answer
@@ -78,18 +95,92 @@ export function Quiz() {
     );
   }
 
-  if (done) {
+  if (error) {
     return (
       <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-6">
-        <div className="text-6xl font-bold text-indigo-600 mb-2">
-          {score}<span className="text-2xl text-gray-400">/{quizData.length}</span>
-        </div>
-        <p className="text-lg text-gray-600 mb-8">
-          {score === quizData.length ? "🎉 완벽!" : score >= quizData.length * 0.6 ? "👍 잘했어요" : "📖 복습 필요"}
-        </p>
+        <AlertTriangle className="w-12 h-12 text-orange-500 mb-4" />
+        <h2 className="text-xl font-semibold text-gray-900 mb-2">퀴즈 생성 실패</h2>
+        <p className="text-gray-500 text-sm mb-6 text-center">퀴즈를 불러올 수 없습니다. 네트워크 또는 API 설정을 확인해주세요.</p>
         <div className="flex gap-3">
-          <Button variant="outline" onClick={() => navigate("/notes")}>노트 보기</Button>
-          <Button onClick={() => navigate("/wrong-answers")} className="bg-indigo-600 hover:bg-indigo-700 text-white">오답노트</Button>
+          <Button variant="outline" onClick={() => navigate("/notes")}>
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            돌아가기
+          </Button>
+          <Button onClick={generateQuiz} className="bg-indigo-600 hover:bg-indigo-700 text-white">
+            다시 시도
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (done) {
+    const optLabel = isHighschool ? "①②③④⑤".split("") : ["A", "B", "C", "D"];
+    return (
+      <div className="min-h-screen bg-gray-50 flex flex-col">
+        {/* Score Header */}
+        <div className="bg-white border-b border-gray-200 px-6 py-6">
+          <div className="max-w-lg mx-auto text-center">
+            <div className="text-5xl font-bold text-indigo-600 mb-1">
+              {score}<span className="text-2xl text-gray-400">/{quizData.length}</span>
+            </div>
+            <p className="text-lg text-gray-600">
+              {score === quizData.length ? "완벽!" : score >= quizData.length * 0.6 ? "잘했어요" : "복습 필요"}
+            </p>
+          </div>
+        </div>
+
+        {/* Question Review List */}
+        <main className="max-w-lg mx-auto px-6 py-6 flex-1 overflow-y-auto w-full">
+          <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">문제별 리뷰</h3>
+          <div className="space-y-4">
+            {quizData.map((q: any, i: number) => {
+              const userAnswer = userAnswers.current[i];
+              const isCorrect = userAnswer === q.answer;
+              return (
+                <div key={i} className={`bg-white rounded-xl p-5 shadow-sm border ${isCorrect ? "border-emerald-200" : "border-red-200"}`}>
+                  <div className="flex items-start gap-3 mb-3">
+                    <div className="shrink-0 mt-0.5">
+                      {isCorrect ? (
+                        <CheckCircle className="w-5 h-5 text-emerald-500" />
+                      ) : (
+                        <XCircle className="w-5 h-5 text-red-500" />
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-xs text-gray-400 font-mono mb-1">Q{i + 1}</p>
+                      <p className="text-sm font-medium text-gray-900 leading-relaxed">{q.q}</p>
+                    </div>
+                  </div>
+                  {!isCorrect && (
+                    <div className="ml-8 space-y-2">
+                      <div className="flex items-start gap-2 p-2.5 bg-red-50 border border-red-100 rounded-lg">
+                        <span className="text-xs font-medium text-red-600 shrink-0">내 답:</span>
+                        <span className="text-xs text-red-800">
+                          {userAnswer !== null ? `${optLabel[userAnswer]} ${q.options[userAnswer]}` : "미응답"}
+                        </span>
+                      </div>
+                      <div className="flex items-start gap-2 p-2.5 bg-emerald-50 border border-emerald-100 rounded-lg">
+                        <span className="text-xs font-medium text-emerald-600 shrink-0">정답:</span>
+                        <span className="text-xs text-emerald-800">{optLabel[q.answer]} {q.options[q.answer]}</span>
+                      </div>
+                      {q.explain && (
+                        <p className="text-xs text-gray-500 mt-1 pl-1">{q.explain}</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </main>
+
+        {/* Bottom Navigation */}
+        <div className="bg-white border-t border-gray-200 px-6 py-4 shrink-0">
+          <div className="max-w-lg mx-auto flex gap-3">
+            <Button variant="outline" className="flex-1" onClick={() => navigate("/notes")}>노트 보기</Button>
+            <Button onClick={() => navigate("/wrong-answers")} className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white">오답노트</Button>
+          </div>
         </div>
       </div>
     );
@@ -146,14 +237,15 @@ export function Quiz() {
                 key={i}
                 onClick={() => handleSelect(i)}
                 disabled={selected !== null}
+                aria-label={`${isHighschool ? "①②③④⑤".split("")[i] : String.fromCharCode(65 + i)}번 선택지: ${opt}`}
                 className={`w-full text-left px-4 py-3.5 rounded-xl border transition-all flex items-center gap-3 ${cls}`}
               >
                 <span className="text-xs font-mono text-gray-400 w-4">
                   {isHighschool ? "①②③④⑤".split("")[i] : String.fromCharCode(65 + i)}
                 </span>
                 <span className="text-sm">{opt}</span>
-                {selected !== null && isCorrect && <span className="ml-auto text-emerald-500">✓</span>}
-                {selected !== null && isSelected && !isCorrect && <span className="ml-auto text-red-500">✗</span>}
+                {selected !== null && isCorrect && <span className="ml-auto text-emerald-500">✓<span className="sr-only">정답</span></span>}
+                {selected !== null && isSelected && !isCorrect && <span className="ml-auto text-red-500">✗<span className="sr-only">오답</span></span>}
               </button>
             );
           })}

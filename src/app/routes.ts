@@ -6,6 +6,7 @@ import { Notes } from "./pages/notes";
 import { Quiz } from "./pages/quiz";
 import { WrongAnswers } from "./pages/wrong-answers";
 import { Dashboard } from "./pages/dashboard";
+import { YouTube } from "./pages/youtube";
 
 export const router = createBrowserRouter(
   [
@@ -16,6 +17,7 @@ export const router = createBrowserRouter(
     { path: "/quiz", Component: Quiz },
     { path: "/wrong-answers", Component: WrongAnswers },
     { path: "/dashboard", Component: Dashboard },
+    { path: "/youtube", Component: YouTube },
   ],
   { basename: import.meta.env.BASE_URL.replace(/\/$/, "") || "/" }
 );

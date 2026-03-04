@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router";
-import { ArrowLeft, Filter, RotateCcw } from "lucide-react";
+import { ArrowLeft, Filter, RotateCcw, BookOpen } from "lucide-react";
 import { Button } from "../components/ui/button";
 import {
   Select,
@@ -21,6 +21,7 @@ export function WrongAnswers() {
 
   const sorted = [...wrongAnswers].sort((a: any, b: any) => {
     if (sortBy === "date") return b.date.localeCompare(a.date);
+    if (sortBy === "oldest") return a.date.localeCompare(b.date);
     if (sortBy === "subject") return a.subject.localeCompare(b.subject);
     return 0;
   });
@@ -33,7 +34,7 @@ export function WrongAnswers() {
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <header className="bg-white border-b border-gray-200 px-6 py-4">
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-2xl lg:max-w-4xl mx-auto">
           <div className="flex items-center justify-between mb-4">
             <Button variant="ghost" size="icon" onClick={() => navigate("/")}>
               <ArrowLeft className="w-5 h-5" />
@@ -66,7 +67,7 @@ export function WrongAnswers() {
               <SelectContent>
                 <SelectItem value="date">최신순</SelectItem>
                 <SelectItem value="subject">과목순</SelectItem>
-                <SelectItem value="difficulty">난이도순</SelectItem>
+                <SelectItem value="oldest">오래된순</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -74,7 +75,7 @@ export function WrongAnswers() {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-4xl mx-auto px-6 py-6">
+      <main className="max-w-2xl lg:max-w-4xl mx-auto px-6 py-6">
         {/* Stats */}
         <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 mb-6">
           <div className="grid grid-cols-3 gap-4 text-center">
@@ -155,9 +156,11 @@ export function WrongAnswers() {
         </div>
 
         {filteredQuestions.length === 0 && (
-          <div className="text-center py-12 text-gray-500">
-            <p>오답 문제가 없습니다.</p>
-            <p className="text-sm mt-2">퀴즈를 풀어보세요!</p>
+          <div className="text-center py-16">
+            <BookOpen className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+            <p className="text-gray-500 font-medium mb-1">아직 오답 문제가 없습니다</p>
+            <p className="text-gray-400 text-sm mb-4">퀴즈를 풀고 틀린 문제를 여기서 복습하세요</p>
+            <Button onClick={() => navigate("/quiz")} className="bg-indigo-600 hover:bg-indigo-700 text-white">퀴즈 풀러 가기</Button>
           </div>
         )}
       </main>
