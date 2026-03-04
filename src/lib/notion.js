@@ -57,3 +57,61 @@ export async function saveWrongAnswerToNotion(question, myAnswer, correctAnswer,
     return false;
   }
 }
+
+// 진도 기록 저장
+export async function saveProgressToNotion(subject, division, school, notesCount, quizScore, studyMinutes) {
+  try {
+    const res = await fetch(NOTION_CONFIG.apiBase, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        parent: { database_id: NOTION_CONFIG.databases.진도트래커 },
+        properties: {
+          과목: { title: [{ text: { content: subject } }] },
+          영역: { select: { name: division } },
+          학교: { select: { name: school } },
+          날짜: { date: { start: new Date().toISOString().split("T")[0] } },
+          "노트 수": { number: notesCount },
+          "퀴즈 점수": { number: quizScore || 0 },
+          "학습 시간(분)": { number: studyMinutes },
+        },
+      }),
+    });
+    return res.ok;
+  } catch {
+    console.warn("진도 저장 실패");
+    return false;
+  }
+}
+
+// 진도 데이터 불러오기
+export async function fetchProgressFromNotion() {
+  try {
+    const res = await fetch(NOTION_CONFIG.apiBase, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "query",
+        database_id: NOTION_CONFIG.databases.진도트래커,
+      }),
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return (data.results || []).map(page => {
+      const p = page.properties;
+      return {
+        id: page.id,
+        subject: p.과목?.title?.[0]?.text?.content || "",
+        division: p.영역?.select?.name || "",
+        school: p.학교?.select?.name || "",
+        date: p.날짜?.date?.start || "",
+        notesCount: p["노트 수"]?.number || 0,
+        quizScore: p["퀴즈 점수"]?.number || 0,
+        studyMinutes: p["학습 시간(분)"]?.number || 0,
+      };
+    });
+  } catch {
+    console.warn("진도 불러오기 실패");
+    return [];
+  }
+}

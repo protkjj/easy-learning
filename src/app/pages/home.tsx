@@ -2,10 +2,14 @@ import { useNavigate } from "react-router";
 import { BookOpen, Settings, ArrowRight, Youtube } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { useApp } from "../../lib/store";
+import { getTodayReviewCount } from "../../lib/weakness";
+import { useMemo } from "react";
 
 export function Home() {
   const navigate = useNavigate();
-  const { setSchool, subject, school, division } = useApp();
+  const { setSchool, subject, school, division, wrongAnswers } = useApp();
+
+  const reviewCount = useMemo(() => getTodayReviewCount(wrongAnswers), [wrongAnswers]);
 
   const handleSelect = (school: string, route: string) => {
     setSchool(school);
@@ -83,8 +87,13 @@ export function Home() {
         <div className="mt-8 pt-8 border-t border-gray-200">
           <h3 className="text-sm font-medium text-gray-700 mb-3">빠른 접근</h3>
           <div className="flex gap-3">
-            <Button variant="outline" className="flex-1" onClick={() => navigate("/wrong-answers")}>
-              오답노트
+            <Button variant="outline" className="flex-1 relative" onClick={() => navigate("/wrong-answers")}>
+              오답노트{reviewCount > 0 ? ` (${reviewCount})` : ""}
+              {reviewCount > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 flex items-center justify-center min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-[10px] font-bold rounded-full">
+                  {reviewCount}
+                </span>
+              )}
             </Button>
             <Button variant="outline" className="flex-1" onClick={() => navigate("/dashboard")}>
               진도 트래커

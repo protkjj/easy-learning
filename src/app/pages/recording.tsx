@@ -7,7 +7,7 @@ import { motion } from "motion/react";
 import { useApp } from "../../lib/store";
 import { CONFIG } from "../../lib/config";
 import { callAI, parseJSON, buildNoteSystem, generateDemoNote } from "../../lib/ai";
-import { saveNoteToNotion } from "../../lib/notion";
+import { saveNoteToNotion, saveProgressToNotion } from "../../lib/notion";
 import { toast } from "sonner";
 
 export function Recording() {
@@ -291,9 +291,11 @@ export function Recording() {
     }
   };
 
-  const handleFinish = () => {
+  const handleFinish = async () => {
     handleStopRecording();
     stopTimer();
+    // 진도 트래커에 학습 기록 저장
+    await saveProgressToNotion(subject!, division!, school!, app.notes.length, 0, Math.round(elapsed / 60));
     navigate("/notes");
   };
 
