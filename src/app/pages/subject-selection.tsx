@@ -15,7 +15,7 @@ import { CONFIG, LANGS } from "../../lib/config";
 export function SubjectSelection() {
   const navigate = useNavigate();
   const { category } = useParams<{ category: string }>();
-  const { school, setSchool, setDivision, setSubject, lang, setLang, aiProvider, updateProvider, apiKey, updateApiKey, setProfessor } = useApp();
+  const { school, setSchool, setDivision, setSubject, lang, setLang, aiProvider, updateProvider, setProfessor } = useApp();
 
   const schoolName = category === "highschool" ? "고등학교" : "대학교";
   if (school !== schoolName) setSchool(schoolName);
@@ -93,16 +93,7 @@ export function SubjectSelection() {
               </div>
             </div>
             {aiProvider !== "demo" && (
-              <div>
-                <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">API Key</label>
-                <input
-                  type="password"
-                  className="w-full mt-1 px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                  placeholder={aiProvider === "openai" ? "sk-..." : "sk-ant-..."}
-                  value={apiKey}
-                  onChange={(e) => updateApiKey(e.target.value)}
-                />
-              </div>
+              <p className="text-xs text-gray-400">API 키는 서버에서 안전하게 관리됩니다.</p>
             )}
             <div>
               <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">교수/선생님 (선택)</label>

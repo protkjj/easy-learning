@@ -130,38 +130,16 @@ export function Recording() {
       const buffer = await blob.arrayBuffer();
       const base64 = btoa(String.fromCharCode(...new Uint8Array(buffer)));
 
-      // 직접 API 호출 (유저 키가 있으면)
+      // 서버 프록시로 Whisper 호출 (API 키는 서버 환경변수)
       let text = "";
-      if (apiKey && (aiProvider === "openai" || aiProvider === "claude")) {
-        const formData = new FormData();
-        formData.append("file", blob, "audio.webm");
-        formData.append("model", "whisper-1");
-        formData.append("language", lang === "English" ? "en" : "ko");
-        formData.append("response_format", "text");
-
-        // Whisper는 OpenAI만 지원하므로 OpenAI 키 필요
-        const key = aiProvider === "openai" ? apiKey : "";
-        if (key) {
-          const res = await fetch("https://api.openai.com/v1/audio/transcriptions", {
-            method: "POST",
-            headers: { Authorization: `Bearer ${key}` },
-            body: formData,
-          });
-          if (res.ok) text = await res.text();
-        }
-      }
-
-      // 서버 프록시 폴백
-      if (!text) {
-        const res = await fetch("/api/whisper", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ audio: base64, language: lang }),
-        });
-        if (res.ok) {
-          const d = await res.json();
-          text = d.text || "";
-        }
+      const res = await fetch("/api/whisper", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ audio: base64, language: lang }),
+      });
+      if (res.ok) {
+        const d = await res.json();
+        text = d.text || "";
       }
 
       if (text.trim()) {

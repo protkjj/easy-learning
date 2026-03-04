@@ -121,50 +121,11 @@ export function Upload() {
     return text.trim();
   };
 
-  // ── Image OCR via OpenAI Vision ──────────────────────────
+  // ── Image OCR via server proxy ──────────────────────────
   const extractImageText = async (file: File): Promise<string> => {
     const base64 = await fileToBase64(file);
 
-    // Try direct OpenAI API first (if user has key and using openai provider)
-    if (apiKey && aiProvider === "openai") {
-      try {
-        const res = await fetch("https://api.openai.com/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${apiKey}`,
-          },
-          body: JSON.stringify({
-            model: "gpt-4o-mini",
-            messages: [
-              {
-                role: "user",
-                content: [
-                  {
-                    type: "text",
-                    text: "이 이미지에서 모든 텍스트를 정확하게 추출해주세요. 수식, 표, 도표의 내용도 텍스트로 변환해주세요. 칠판, PPT, 교과서, 노트 등 어떤 형태든 가능합니다. 추출한 텍스트만 반환하고, 추가 설명은 하지 마세요."
-                  },
-                  {
-                    type: "image_url",
-                    image_url: { url: `data:${file.type};base64,${base64}` }
-                  }
-                ]
-              }
-            ],
-            max_tokens: 4000,
-          }),
-        });
-        if (res.ok) {
-          const data = await res.json();
-          const text = data.choices?.[0]?.message?.content;
-          if (text) return text;
-        }
-      } catch (e) {
-        console.warn("Direct OCR failed, falling back to server proxy:", e);
-      }
-    }
-
-    // Fallback to server proxy
+    // 서버 프록시로 OCR 호출 (API 키는 서버 환경변수)
     const res = await fetch("/api/ocr", {
       method: "POST",
       headers: { "Content-Type": "application/json" },

@@ -3,6 +3,9 @@ import { createContext, useContext, useState, useRef } from "react";
 const AppContext = createContext(null);
 
 export function AppProvider({ children }) {
+  // 기존 localStorage에 남은 API 키 제거 (보안)
+  localStorage.removeItem("lectureai_apikey");
+
   // Setup state
   const [school, setSchool] = useState(null); // "고등학교" | "대학교"
   const [division, setDivision] = useState(null);
@@ -12,7 +15,7 @@ export function AppProvider({ children }) {
 
   // AI state
   const [aiProvider, setAiProvider] = useState(() => localStorage.getItem("lectureai_provider") || "claude");
-  const [apiKey, setApiKey] = useState(() => localStorage.getItem("lectureai_apikey") || "");
+  const [apiKey] = useState(""); // API 키는 서버 환경변수로 관리 (클라이언트 저장 안 함)
 
   // Session state (with localStorage persistence)
   const [notes, setNotes] = useState(() => {
@@ -23,14 +26,17 @@ export function AppProvider({ children }) {
     try { return Number(localStorage.getItem("lectureai_totalElapsed") || "0"); } catch { return 0; }
   });
   const [wrongAnswers, setWrongAnswers] = useState(() => {
-    try { return JSON.parse(localStorage.getItem("lectureai_wrongAnswers") || "[]"); } catch { return []; }
+    try {
+      const raw = JSON.parse(localStorage.getItem("lectureai_wrongAnswers") || "[]");
+      // 기존 데이터 마이그레이션: reviewCount/lastReviewDate 없으면 추가
+      return raw.map((wa) => ({
+        ...wa,
+        reviewCount: wa.reviewCount ?? 0,
+        lastReviewDate: wa.lastReviewDate ?? null,
+      }));
+    } catch { return []; }
   });
   const timerRef = useRef(null);
-
-  const updateApiKey = (key) => {
-    setApiKey(key);
-    localStorage.setItem("lectureai_apikey", key);
-  };
 
   const updateProvider = (p) => {
     setAiProvider(p);
@@ -57,7 +63,12 @@ export function AppProvider({ children }) {
     return updated;
   });
   const addWrongAnswer = (wa) => setWrongAnswers((prev) => {
-    const updated = [...prev, wa];
+    const updated = [...prev, { ...wa, reviewCount: wa.reviewCount ?? 0, lastReviewDate: wa.lastReviewDate ?? null }];
+    localStorage.setItem("lectureai_wrongAnswers", JSON.stringify(updated));
+    return updated;
+  });
+  const updateWrongAnswer = (index, updates) => setWrongAnswers((prev) => {
+    const updated = prev.map((wa, i) => i === index ? { ...wa, ...updates } : wa);
     localStorage.setItem("lectureai_wrongAnswers", JSON.stringify(updated));
     return updated;
   });
@@ -71,11 +82,11 @@ export function AppProvider({ children }) {
         lang, setLang,
         professor, setProfessor,
         aiProvider, updateProvider,
-        apiKey, updateApiKey,
+        apiKey,
         notes, setNotes, addNote,
         elapsed, setElapsed, startTimer, stopTimer, timerRef,
         totalElapsed, setTotalElapsed,
-        wrongAnswers, addWrongAnswer,
+        wrongAnswers, addWrongAnswer, updateWrongAnswer,
       }}
     >
       {children}

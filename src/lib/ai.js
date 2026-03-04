@@ -2,7 +2,7 @@
 //  AI PROVIDER (Claude preferred / OpenAI / Demo)
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-export async function callAI(messages, system, apiKey, provider) {
+export async function callAI(messages, system, _apiKey, provider) {
   if (provider === "demo") {
     await new Promise((r) => setTimeout(r, 800));
     return null;
@@ -13,25 +13,7 @@ export async function callAI(messages, system, apiKey, provider) {
       ? { model: "gpt-4o-mini", messages: [{ role: "system", content: system }, ...messages], max_tokens: 1500 }
       : { model: "claude-sonnet-4-20250514", max_tokens: 1500, system, messages };
 
-  // 1. Direct API (with user's key)
-  if (apiKey) {
-    try {
-      const url = provider === "openai" ? "https://api.openai.com/v1/chat/completions" : "https://api.anthropic.com/v1/messages";
-      const headers =
-        provider === "openai"
-          ? { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` }
-          : { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" };
-
-      const res = await fetch(url, { method: "POST", headers, body: JSON.stringify(body) });
-      const d = await res.json();
-      if (provider === "openai" && d.choices?.[0]?.message?.content) return d.choices[0].message.content;
-      if (provider !== "openai" && d.content?.[0]?.text) return d.content[0].text;
-    } catch (e) {
-      console.warn("Direct API failed:", e.message);
-    }
-  }
-
-  // 2. Server proxy (Vercel)
+  // Server proxy (Vercel) — API 키는 서버 환경변수에서 처리
   try {
     const proxyUrl = provider === "openai" ? "/api/openai" : "/api/claude";
     const res = await fetch(proxyUrl, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
@@ -40,6 +22,7 @@ export async function callAI(messages, system, apiKey, provider) {
       if (provider === "openai") return d.choices?.[0]?.message?.content || null;
       return d.content?.[0]?.text || null;
     }
+    console.warn("Server proxy returned:", res.status);
   } catch (e) {
     console.warn("Server proxy failed:", e.message);
   }

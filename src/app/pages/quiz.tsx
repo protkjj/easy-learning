@@ -62,13 +62,17 @@ export function Quiz() {
     if (!correct) {
       const q = quizData[idx];
       const optLabel = isHighschool ? "①②③④⑤".split("") : ["A", "B", "C", "D"];
+      const now = new Date();
+      const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
       const wa = {
         question: q.q,
         myAnswer: `${optLabel[i]} ${q.options[i]}`,
         correctAnswer: `${optLabel[q.answer]} ${q.options[q.answer]}`,
         explain: q.explain || "",
         subject: subject!,
-        date: new Date().toISOString().split("T")[0],
+        date: dateStr,
+        reviewCount: 0,
+        lastReviewDate: null,
       };
       addWrongAnswer(wa);
       saveWrongAnswerToNotion(wa.question, wa.myAnswer, wa.correctAnswer, wa.explain, wa.subject);
