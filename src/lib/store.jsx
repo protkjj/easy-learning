@@ -1,6 +1,28 @@
 import { createContext, useContext, useState, useRef } from "react";
+import { toast } from "sonner";
 
 const AppContext = createContext(null);
+
+// localStorage 안전 저장 — QuotaExceededError 방어
+function safeSetItem(key, value) {
+  try {
+    localStorage.setItem(key, value);
+  } catch (e) {
+    if (e.name === "QuotaExceededError" || e.code === 22) {
+      // 오래된 노트 30개 삭제 후 재시도
+      try {
+        const notes = JSON.parse(localStorage.getItem("lectureai_notes") || "[]");
+        if (notes.length > 30) {
+          localStorage.setItem("lectureai_notes", JSON.stringify(notes.slice(-30)));
+          localStorage.setItem(key, value);
+          toast.warning("저장 공간 부족 — 오래된 노트 일부를 정리했습니다.");
+          return;
+        }
+      } catch {}
+      toast.error("저장 공간이 가득 찼습니다. 브라우저 데이터를 정리해주세요.");
+    }
+  }
+}
 
 export function AppProvider({ children }) {
   // 기존 localStorage에 남은 API 키 제거 (보안)
@@ -40,7 +62,7 @@ export function AppProvider({ children }) {
 
   const updateProvider = (p) => {
     setAiProvider(p);
-    localStorage.setItem("lectureai_provider", p);
+    safeSetItem("lectureai_provider", p);
   };
 
   const startTimer = () => {
@@ -52,24 +74,24 @@ export function AppProvider({ children }) {
     if (timerRef.current) clearInterval(timerRef.current);
     setTotalElapsed((prev) => {
       const updated = prev + elapsed;
-      localStorage.setItem("lectureai_totalElapsed", String(updated));
+      safeSetItem("lectureai_totalElapsed", String(updated));
       return updated;
     });
   };
 
   const addNote = (note) => setNotes((prev) => {
     const updated = [...prev, note];
-    localStorage.setItem("lectureai_notes", JSON.stringify(updated));
+    safeSetItem("lectureai_notes", JSON.stringify(updated));
     return updated;
   });
   const addWrongAnswer = (wa) => setWrongAnswers((prev) => {
     const updated = [...prev, { ...wa, reviewCount: wa.reviewCount ?? 0, lastReviewDate: wa.lastReviewDate ?? null }];
-    localStorage.setItem("lectureai_wrongAnswers", JSON.stringify(updated));
+    safeSetItem("lectureai_wrongAnswers", JSON.stringify(updated));
     return updated;
   });
   const updateWrongAnswer = (index, updates) => setWrongAnswers((prev) => {
     const updated = prev.map((wa, i) => i === index ? { ...wa, ...updates } : wa);
-    localStorage.setItem("lectureai_wrongAnswers", JSON.stringify(updated));
+    safeSetItem("lectureai_wrongAnswers", JSON.stringify(updated));
     return updated;
   });
 
