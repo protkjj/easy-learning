@@ -75,7 +75,7 @@ export function Quiz() {
         lastReviewDate: null,
       };
       addWrongAnswer(wa);
-      saveWrongAnswerToNotion(wa.question, wa.myAnswer, wa.correctAnswer, wa.explain, wa.subject);
+      saveWrongAnswerToNotion(wa.question, wa.myAnswer, wa.correctAnswer, wa.explain, wa.subject, 0);
     }
   };
 

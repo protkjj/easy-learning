@@ -15,8 +15,11 @@ export async function callAI(messages, system, _apiKey, provider) {
 
   // Server proxy (Vercel) — API 키는 서버 환경변수에서 처리
   try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 30000);
     const proxyUrl = provider === "openai" ? "/api/openai" : "/api/claude";
-    const res = await fetch(proxyUrl, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    const res = await fetch(proxyUrl, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body), signal: controller.signal });
+    clearTimeout(timeout);
     if (res.ok) {
       const d = await res.json();
       if (provider === "openai") return d.choices?.[0]?.message?.content || null;
@@ -24,7 +27,8 @@ export async function callAI(messages, system, _apiKey, provider) {
     }
     console.warn("Server proxy returned:", res.status);
   } catch (e) {
-    console.warn("Server proxy failed:", e.message);
+    if (e.name === "AbortError") console.warn("AI 요청 타임아웃 (30초)");
+    else console.warn("Server proxy failed:", e.message);
   }
 
   console.warn("AI 호출 실패 — 데모 모드로 폴백됩니다.");

@@ -12,6 +12,8 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs
 
 const ACCEPTED_IMAGE_TYPES = ["image/png", "image/jpeg", "image/jpg", "image/webp", "image/gif"];
 const ACCEPTED_TYPES = [...ACCEPTED_IMAGE_TYPES, "application/pdf"];
+const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
+const MAX_IMAGE_SIZE = 10 * 1024 * 1024; // 10MB (OCR API 제한)
 
 interface FileInfo {
   file: File;
@@ -54,8 +56,20 @@ export function Upload() {
       return;
     }
 
+    // 파일 크기 검증
+    const sizeChecked = valid.filter(f => {
+      const limit = f.type.startsWith("image/") ? MAX_IMAGE_SIZE : MAX_FILE_SIZE;
+      const limitMB = Math.round(limit / 1024 / 1024);
+      if (f.size > limit) {
+        toast.error(`${f.name}: ${limitMB}MB 초과 (${Math.round(f.size / 1024 / 1024)}MB)`);
+        return false;
+      }
+      return true;
+    });
+    if (sizeChecked.length === 0) return;
+
     const fileInfos: FileInfo[] = [];
-    for (const file of valid) {
+    for (const file of sizeChecked) {
       const info: FileInfo = { file };
 
       if (file.type.startsWith("image/")) {
