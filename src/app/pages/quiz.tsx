@@ -1,0 +1,186 @@
+import { useNavigate } from "react-router";
+import { ArrowLeft } from "lucide-react";
+import { Button } from "../components/ui/button";
+import { useState, useEffect } from "react";
+import { useApp } from "../../lib/store";
+import { CONFIG } from "../../lib/config";
+import { callAI, parseJSON, buildQuizSystem, generateDemoQuiz } from "../../lib/ai";
+import { saveWrongAnswerToNotion } from "../../lib/notion";
+
+export function Quiz() {
+  const navigate = useNavigate();
+  const { school, division, subject, notes, aiProvider, apiKey, addWrongAnswer } = useApp();
+  const [quizData, setQuizData] = useState<any[]>([]);
+  const [idx, setIdx] = useState(0);
+  const [selected, setSelected] = useState<number | null>(null);
+  const [score, setScore] = useState(0);
+  const [done, setDone] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  const isHighschool = school === "고등학교";
+  const cfg = school ? CONFIG[school as keyof typeof CONFIG] : null;
+
+  useEffect(() => {
+    generateQuiz();
+  }, []);
+
+  const generateQuiz = async () => {
+    if (!cfg || !division) return;
+    setLoading(true);
+    const allNotes = notes.map((n: any) => n.note).join("\n");
+    const sys = buildQuizSystem(school!, division!, subject!, allNotes, cfg.quizType);
+    const raw = await callAI([{ role: "user", content: "퀴즈 만들어주세요." }], sys, apiKey, aiProvider);
+    const data = raw ? parseJSON(raw) || [] : generateDemoQuiz(school!, subject!);
+    setQuizData(data);
+    setLoading(false);
+  };
+
+  const handleSelect = (i: number) => {
+    if (selected !== null) return;
+    const correct = i === quizData[idx].answer;
+    setSelected(i);
+    if (correct) setScore((s) => s + 1);
+
+    // Save wrong answer
+    if (!correct) {
+      const q = quizData[idx];
+      const optLabel = isHighschool ? "①②③④⑤".split("") : ["A", "B", "C", "D"];
+      const wa = {
+        question: q.q,
+        myAnswer: `${optLabel[i]} ${q.options[i]}`,
+        correctAnswer: `${optLabel[q.answer]} ${q.options[q.answer]}`,
+        explain: q.explain || "",
+        subject: subject!,
+        date: new Date().toISOString().split("T")[0],
+      };
+      addWrongAnswer(wa);
+      saveWrongAnswerToNotion(wa.question, wa.myAnswer, wa.correctAnswer, wa.explain, wa.subject);
+    }
+  };
+
+  const handleNext = () => {
+    if (idx + 1 >= quizData.length) {
+      setDone(true);
+    } else {
+      setIdx((i) => i + 1);
+      setSelected(null);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full mx-auto mb-4" />
+          <p className="text-gray-500 text-sm">퀴즈 생성 중...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (done) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-6">
+        <div className="text-6xl font-bold text-indigo-600 mb-2">
+          {score}<span className="text-2xl text-gray-400">/{quizData.length}</span>
+        </div>
+        <p className="text-lg text-gray-600 mb-8">
+          {score === quizData.length ? "🎉 완벽!" : score >= quizData.length * 0.6 ? "👍 잘했어요" : "📖 복습 필요"}
+        </p>
+        <div className="flex gap-3">
+          <Button variant="outline" onClick={() => navigate("/notes")}>노트 보기</Button>
+          <Button onClick={() => navigate("/wrong-answers")} className="bg-indigo-600 hover:bg-indigo-700 text-white">오답노트</Button>
+        </div>
+      </div>
+    );
+  }
+
+  const q = quizData[idx];
+  if (!q) return null;
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <header className="bg-white border-b border-gray-200 px-6 py-4">
+        <div className="max-w-lg mx-auto">
+          <div className="flex items-center justify-between mb-3">
+            <Button variant="ghost" size="icon" onClick={() => navigate("/notes")}>
+              <ArrowLeft className="w-5 h-5" />
+            </Button>
+            <span className="text-sm text-gray-500 font-mono">Q{idx + 1}/{quizData.length}</span>
+          </div>
+          {/* Progress */}
+          <div className="flex gap-1.5">
+            {quizData.map((_: any, i: number) => (
+              <div key={i} className={`flex-1 h-1 rounded-full ${i <= idx ? "bg-indigo-500" : "bg-gray-200"} ${i < idx ? "opacity-60" : ""}`} />
+            ))}
+          </div>
+        </div>
+      </header>
+
+      <main className="max-w-lg mx-auto px-6 py-8">
+        {/* Tag */}
+        {q.tag && (
+          <span className="inline-block px-2.5 py-1 text-xs bg-purple-100 text-purple-700 rounded-md mb-4">
+            {q.tag}
+          </span>
+        )}
+
+        {/* Question */}
+        <h2 className="text-xl font-semibold mb-6 leading-relaxed">{q.q}</h2>
+
+        {/* Options */}
+        <div className="space-y-3">
+          {q.options.map((opt: string, i: number) => {
+            const isCorrect = i === q.answer;
+            const isSelected = selected === i;
+            let cls = "bg-white border-gray-200 text-gray-700 hover:border-indigo-300";
+            if (selected !== null) {
+              if (isCorrect) cls = "bg-emerald-50 border-emerald-500 text-emerald-700";
+              else if (isSelected) cls = "bg-red-50 border-red-500 text-red-700";
+              else cls = "bg-white border-gray-100 text-gray-400";
+            }
+
+            return (
+              <button
+                key={i}
+                onClick={() => handleSelect(i)}
+                disabled={selected !== null}
+                className={`w-full text-left px-4 py-3.5 rounded-xl border transition-all flex items-center gap-3 ${cls}`}
+              >
+                <span className="text-xs font-mono text-gray-400 w-4">
+                  {isHighschool ? "①②③④⑤".split("")[i] : String.fromCharCode(65 + i)}
+                </span>
+                <span className="text-sm">{opt}</span>
+                {selected !== null && isCorrect && <span className="ml-auto text-emerald-500">✓</span>}
+                {selected !== null && isSelected && !isCorrect && <span className="ml-auto text-red-500">✗</span>}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Explanation */}
+        {selected !== null && (
+          <div className="mt-6">
+            <div className={`p-4 rounded-xl text-sm ${
+              selected === q.answer ? "bg-emerald-50 border border-emerald-200 text-emerald-700" : "bg-red-50 border border-red-200 text-red-700"
+            }`}>
+              <p className="font-medium mb-1">{selected === q.answer ? "정답!" : "오답"}</p>
+              <p className="text-gray-600">{q.explain}</p>
+            </div>
+
+            {selected !== q.answer && (
+              <div className="mt-2 text-xs text-indigo-500 text-center font-mono">
+                📋 오답노트에 자동 저장됨
+              </div>
+            )}
+
+            <Button onClick={handleNext} className="w-full mt-4 bg-indigo-600 hover:bg-indigo-700 text-white">
+              {idx + 1 >= quizData.length ? "결과 보기 →" : "다음 →"}
+            </Button>
+          </div>
+        )}
+      </main>
+    </div>
+  );
+}
