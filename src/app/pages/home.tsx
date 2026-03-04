@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router";
-import { BookOpen, Settings, ArrowRight, Youtube } from "lucide-react";
+import { BookOpen, Settings, ArrowRight, Youtube, Upload as UploadIcon } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { useApp } from "../../lib/store";
 import { getTodayReviewCount } from "../../lib/weakness";
@@ -99,14 +99,22 @@ export function Home() {
               진도 트래커
             </Button>
           </div>
-          <div className="mt-3">
+          <div className="mt-3 flex gap-3">
             <Button
               variant="outline"
-              className="w-full border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+              className="flex-1 border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
               onClick={() => navigate("/youtube")}
             >
               <Youtube className="w-4 h-4 mr-2" />
               YouTube 학습
+            </Button>
+            <Button
+              variant="outline"
+              className="flex-1 border-indigo-200 text-indigo-600 hover:bg-indigo-50 hover:text-indigo-700"
+              onClick={() => navigate("/upload")}
+            >
+              <UploadIcon className="w-4 h-4 mr-2" />
+              PDF/이미지
             </Button>
           </div>
         </div>

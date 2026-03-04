@@ -7,6 +7,7 @@ import { Quiz } from "./pages/quiz";
 import { WrongAnswers } from "./pages/wrong-answers";
 import { Dashboard } from "./pages/dashboard";
 import { YouTube } from "./pages/youtube";
+import { Upload } from "./pages/upload";
 
 export const router = createBrowserRouter(
   [
@@ -18,6 +19,7 @@ export const router = createBrowserRouter(
     { path: "/wrong-answers", Component: WrongAnswers },
     { path: "/dashboard", Component: Dashboard },
     { path: "/youtube", Component: YouTube },
+    { path: "/upload", Component: Upload },
   ],
   { basename: import.meta.env.BASE_URL.replace(/\/$/, "") || "/" }
 );

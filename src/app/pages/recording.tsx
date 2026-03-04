@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router";
-import { ArrowLeft, Mic, Pause, Square, Send, Zap } from "lucide-react";
+import { ArrowLeft, Mic, Pause, Square, Send, Zap, Upload } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Textarea } from "../components/ui/textarea";
 import { useState, useEffect, useRef, useCallback } from "react";
@@ -451,6 +451,13 @@ export function Recording() {
               {processing ? "AI 분석 중..." : "AI 필기 생성"}
             </Button>
           </div>
+          <button
+            onClick={() => navigate("/upload")}
+            className="mt-3 flex items-center justify-center gap-1.5 text-xs text-indigo-500 hover:text-indigo-700 transition-colors w-full"
+          >
+            <Upload className="w-3.5 h-3.5" />
+            파일에서 텍스트 추출 →
+          </button>
           {app.notes.length > 0 && (
             <p className="text-xs text-gray-500 mt-2 text-center">
               {app.notes.length}개 노트 생성됨 · 완료 버튼으로 확인
