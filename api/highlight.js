@@ -15,17 +15,28 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: "text 또는 segments가 필요합니다." });
   }
 
+  // 빈 배열 검증
+  if (segments && Array.isArray(segments) && segments.length === 0) {
+    return res.status(400).json({ error: "segments 배열이 비어있습니다." });
+  }
+
   // HuggingFace Spaces URL 또는 로컬 서버
   // Vercel 환경변수에서 설정: INFERENCE_SERVER_URL=https://<username>-easy-learning-inference.hf.space
   const serverUrl =
     process.env.INFERENCE_SERVER_URL || "http://localhost:8000";
 
   try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
+
     const response = await fetch(`${serverUrl}/analyze`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ text, segments }),
+      signal: controller.signal,
     });
+
+    clearTimeout(timeout);
 
     if (!response.ok) {
       const errText = await response.text();
@@ -38,8 +49,13 @@ export default async function handler(req, res) {
     const data = await response.json();
     return res.status(200).json(data);
   } catch (error) {
-    // 추론 서버 연결 실패 시 텍스트 기반 폴백
-    if (error.cause?.code === "ECONNREFUSED" || error.message?.includes("fetch")) {
+    // 추론 서버 연결 실패 또는 타임아웃 시 텍스트 기반 폴백
+    if (
+      error.name === "AbortError" ||
+      error.cause?.code === "ECONNREFUSED" ||
+      error.cause?.code === "ENOTFOUND" ||
+      error.message?.includes("fetch")
+    ) {
       return res.status(200).json(fallbackAnalyze(text, segments));
     }
     return res.status(500).json({

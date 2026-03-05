@@ -199,14 +199,27 @@ async def health():
 @app.post("/predict", response_model=PredictResponse)
 async def predict(req: PredictRequest):
     """세그먼트 배열을 받아 중요도를 예측"""
+    # 텍스트 길이 제한: 총 텍스트가 MAX_TEXT_LENGTH 초과 시 앞쪽 세그먼트만 처리
+    segments = req.segments
+    total_len = sum(len(s.text) for s in segments)
+    if total_len > MAX_TEXT_LENGTH:
+        trimmed = []
+        acc = 0
+        for s in segments:
+            if acc + len(s.text) > MAX_TEXT_LENGTH:
+                break
+            trimmed.append(s)
+            acc += len(s.text)
+        segments = trimmed
+
     if not session:
         return PredictResponse(results=[
             {"text": s.text, "start": s.start, "duration": s.duration,
              "label": 0, "confidence": 0.5, "importance_score": 0.5}
-            for s in req.segments
+            for s in segments
         ])
 
-    results = predict_segments(req.segments)
+    results = predict_segments(segments)
     return PredictResponse(results=results)
 
 
@@ -217,13 +230,19 @@ async def analyze(body: dict):
     text = body.get("text", "")
     timed_segments = body.get("segments")
 
-    # 텍스트 길이 제한
+    # 텍스트 길이 제한 (초과 시 조용히 잘라서 처리)
     if text and len(text) > MAX_TEXT_LENGTH:
         text = text[:MAX_TEXT_LENGTH]
     if timed_segments:
-        total_len = sum(len(s.get("text", "")) for s in timed_segments)
-        if total_len > MAX_TEXT_LENGTH:
-            return {"error": f"텍스트 총 길이가 {MAX_TEXT_LENGTH}자를 초과합니다.", "total": 0, "results": []}
+        trimmed = []
+        acc = 0
+        for s in timed_segments:
+            seg_len = len(s.get("text", ""))
+            if acc + seg_len > MAX_TEXT_LENGTH:
+                break
+            trimmed.append(s)
+            acc += seg_len
+        timed_segments = trimmed
 
     if timed_segments:
         # 타임스탬프 정보가 있는 세그먼트 사용

@@ -152,7 +152,8 @@ export function YouTube() {
       toast.success(
         `분석 완료! ${total}개 구간 중 ${importantCount}개 핵심 구간 발견`
       );
-    } catch {
+    } catch (err) {
+      console.error("handleAnalyze failed:", err);
       toast.error("핵심 구간 분석에 실패했습니다.");
     } finally {
       setAnalyzing(false);
