@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router";
-import { ArrowLeft, Mic, Pause, Square, Send, Zap, Upload } from "lucide-react";
+import { ArrowLeft, Mic, Pause, Square, Send, Zap, Upload, Globe } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Textarea } from "../components/ui/textarea";
 import { useState, useEffect, useRef, useCallback } from "react";
@@ -13,7 +13,7 @@ import { toast } from "sonner";
 export function Recording() {
   const navigate = useNavigate();
   const app = useApp();
-  const { school, division, subject, lang, professor, aiProvider, apiKey, addNote, elapsed, startTimer, stopTimer } = app;
+  const { school, division, subject, lang, setLang, professor, aiProvider, apiKey, addNote, elapsed, startTimer, stopTimer, resetTimer } = app;
 
   const [isRecording, setIsRecording] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
@@ -21,8 +21,9 @@ export function Recording() {
   const [interimText, setInterimText] = useState("");
   const [processing, setProcessing] = useState(false);
   const [notionStatus, setNotionStatus] = useState<string | null>(null);
-  const [sttMode, setSttMode] = useState<"browser" | "whisper">("browser"); // STT 엔진 선택
+  const [sttMode, setSttMode] = useState<"browser" | "whisper">("browser");
   const [whisperProcessing, setWhisperProcessing] = useState(false);
+  const [hasStarted, setHasStarted] = useState(false); // 녹음 시작 여부
 
   const recognitionRef = useRef<any>(null);
   const isRecordingRef = useRef(false);
@@ -31,16 +32,15 @@ export function Recording() {
 
   const cfg = school ? CONFIG[school as keyof typeof CONFIG] : null;
   const divCfg = cfg && division ? cfg.계열[division as keyof typeof cfg.계열] : null;
-  const isHighschool = school === "고등학교";
 
   // Redirect if no subject selected
   useEffect(() => {
     if (!subject) navigate("/");
   }, [subject, navigate]);
 
-  // Timer
+  // 페이지 진입 시 타이머 리셋 (녹음 시작 전까지 0:00 유지)
   useEffect(() => {
-    startTimer();
+    resetTimer();
     return () => stopTimer();
   }, []);
 
@@ -107,7 +107,7 @@ export function Recording() {
         if (e.data.size > 0) audioChunksRef.current.push(e.data);
       };
 
-      mediaRecorder.start(1000); // 1초마다 chunk
+      mediaRecorder.start(1000);
       mediaRecorderRef.current = mediaRecorder;
     } catch (e) {
       alert("마이크 권한을 허용해주세요.");
@@ -122,15 +122,13 @@ export function Recording() {
     const blob = new Blob(audioChunksRef.current, { type: "audio/webm" });
     audioChunksRef.current = [];
 
-    if (blob.size < 1000) return; // 너무 작으면 스킵
+    if (blob.size < 1000) return;
 
     setWhisperProcessing(true);
     try {
-      // base64 변환
       const buffer = await blob.arrayBuffer();
       const base64 = btoa(String.fromCharCode(...new Uint8Array(buffer)));
 
-      // 서버 프록시로 Whisper 호출 (API 키는 서버 환경변수)
       let text = "";
       const res = await fetch("/api/whisper", {
         method: "POST",
@@ -157,17 +155,21 @@ export function Recording() {
     setIsRecording(true);
     setIsPaused(false);
     setInterimText("");
+    setHasStarted(true);
+
+    // 녹음 시작 시 타이머 시작
+    resetTimer();
+    startTimer();
 
     if (sttMode === "browser") {
       startBrowserSTT();
     } else {
       startWhisperRecording();
     }
-  }, [sttMode, startBrowserSTT, startWhisperRecording]);
+  }, [sttMode, startBrowserSTT, startWhisperRecording, resetTimer, startTimer]);
 
   const handlePause = () => {
     if (isPaused) {
-      // Resume
       if (sttMode === "browser" && recognitionRef.current) {
         try { recognitionRef.current.start(); } catch {}
       }
@@ -176,14 +178,12 @@ export function Recording() {
       }
       isRecordingRef.current = true;
     } else {
-      // Pause
       isRecordingRef.current = false;
       if (sttMode === "browser" && recognitionRef.current) {
         try { recognitionRef.current.stop(); } catch {}
       }
       if (sttMode === "whisper" && mediaRecorderRef.current?.state === "recording") {
         mediaRecorderRef.current.pause();
-        // 일시정지 시 현재까지의 오디오를 Whisper로 전송
         sendWhisperChunk();
       }
     }
@@ -202,7 +202,6 @@ export function Recording() {
       if (mediaRecorderRef.current) {
         mediaRecorderRef.current.stop();
         mediaRecorderRef.current.stream.getTracks().forEach(t => t.stop());
-        // 마지막 chunk 전송
         await sendWhisperChunk();
         mediaRecorderRef.current = null;
       }
@@ -218,7 +217,7 @@ export function Recording() {
     if (!isRecording || isPaused || sttMode !== "whisper") return;
     const interval = setInterval(() => {
       sendWhisperChunk();
-    }, 30000); // 30초마다
+    }, 30000);
     return () => clearInterval(interval);
   }, [isRecording, isPaused, sttMode]);
 
@@ -257,7 +256,6 @@ export function Recording() {
       setTranscript("");
       setProcessing(false);
 
-      // Notion background save
       setNotionStatus("saving");
       const ok = await saveNoteToNotion(noteObj, subject!, division!, professor);
       setNotionStatus(ok ? "saved" : "failed");
@@ -272,7 +270,6 @@ export function Recording() {
   const handleFinish = async () => {
     handleStopRecording();
     stopTimer();
-    // 진도 트래커에 학습 기록 저장
     await saveProgressToNotion(subject!, division!, school!, app.notes.length, 0, Math.round(elapsed / 60));
     navigate("/notes");
   };
@@ -308,37 +305,97 @@ export function Recording() {
         </div>
       </header>
 
-      {/* Main Content */}
       <main className="max-w-2xl mx-auto px-6 py-8 flex-1 flex flex-col w-full">
-        {/* STT Mode Toggle */}
-        <div className="flex justify-center gap-2 mb-4">
-          <button
-            onClick={() => !isRecording && setSttMode("browser")}
-            disabled={isRecording}
-            className={`px-3 py-1.5 rounded-lg text-xs transition-colors ${
-              sttMode === "browser" ? "bg-indigo-600 text-white" : "bg-gray-200 text-gray-600 hover:bg-gray-300"
-            }`}
-          >
-            <Mic className="w-3 h-3 inline mr-1" />
-            브라우저 (무료)
-          </button>
-          <button
-            onClick={() => !isRecording && setSttMode("whisper")}
-            disabled={isRecording}
-            className={`px-3 py-1.5 rounded-lg text-xs transition-colors ${
-              sttMode === "whisper" ? "bg-emerald-600 text-white" : "bg-gray-200 text-gray-600 hover:bg-gray-300"
-            }`}
-          >
-            <Zap className="w-3 h-3 inline mr-1" />
-            Whisper (고정밀)
-          </button>
-        </div>
+        {/* 녹음 시작 전: 언어 선택 + STT 모드 */}
+        {!hasStarted && (
+          <div className="flex flex-col items-center mb-8">
+            {/* 언어 선택 */}
+            <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm w-full max-w-sm mb-4">
+              <div className="flex items-center gap-2 mb-4">
+                <Globe className="w-4 h-4 text-indigo-500" />
+                <h3 className="text-sm font-medium text-gray-700">인식 언어 선택</h3>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  onClick={() => setLang("한국어")}
+                  className={`px-4 py-3 rounded-xl text-sm font-medium transition-all ${
+                    lang === "한국어"
+                      ? "bg-indigo-600 text-white shadow-md"
+                      : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                  }`}
+                >
+                  한국어
+                </button>
+                <button
+                  onClick={() => setLang("English")}
+                  className={`px-4 py-3 rounded-xl text-sm font-medium transition-all ${
+                    lang === "English"
+                      ? "bg-indigo-600 text-white shadow-md"
+                      : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                  }`}
+                >
+                  English
+                </button>
+              </div>
+            </div>
+
+            {/* STT Mode Toggle */}
+            <div className="flex justify-center gap-2 mb-6">
+              <button
+                onClick={() => setSttMode("browser")}
+                className={`px-3 py-1.5 rounded-lg text-xs transition-colors ${
+                  sttMode === "browser" ? "bg-indigo-600 text-white" : "bg-gray-200 text-gray-600 hover:bg-gray-300"
+                }`}
+              >
+                <Mic className="w-3 h-3 inline mr-1" />
+                브라우저 (무료)
+              </button>
+              <button
+                onClick={() => setSttMode("whisper")}
+                className={`px-3 py-1.5 rounded-lg text-xs transition-colors ${
+                  sttMode === "whisper" ? "bg-emerald-600 text-white" : "bg-gray-200 text-gray-600 hover:bg-gray-300"
+                }`}
+              >
+                <Zap className="w-3 h-3 inline mr-1" />
+                Whisper (고정밀)
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* 녹음 시작 후: STT 모드 토글 (녹음 중엔 비활성) */}
+        {hasStarted && (
+          <div className="flex justify-center gap-2 mb-4">
+            <button
+              onClick={() => !isRecording && setSttMode("browser")}
+              disabled={isRecording}
+              className={`px-3 py-1.5 rounded-lg text-xs transition-colors ${
+                sttMode === "browser" ? "bg-indigo-600 text-white" : "bg-gray-200 text-gray-600 hover:bg-gray-300"
+              }`}
+            >
+              <Mic className="w-3 h-3 inline mr-1" />
+              브라우저 (무료)
+            </button>
+            <button
+              onClick={() => !isRecording && setSttMode("whisper")}
+              disabled={isRecording}
+              className={`px-3 py-1.5 rounded-lg text-xs transition-colors ${
+                sttMode === "whisper" ? "bg-emerald-600 text-white" : "bg-gray-200 text-gray-600 hover:bg-gray-300"
+              }`}
+            >
+              <Zap className="w-3 h-3 inline mr-1" />
+              Whisper (고정밀)
+            </button>
+          </div>
+        )}
 
         {/* Timer */}
         <div className="text-center mb-6">
           <div className="text-5xl font-bold tracking-wider mb-2 text-gray-900">{formatTime(elapsed)}</div>
           <div className="text-gray-500 text-sm">
-            {isRecording ? (isPaused ? "일시정지됨" : (whisperProcessing ? "Whisper 변환중..." : "녹음 중...")) : "준비"}
+            {isRecording
+              ? (isPaused ? "일시정지됨" : (whisperProcessing ? "Whisper 변환중..." : "녹음 중..."))
+              : (hasStarted ? "정지됨" : "녹음 버튼을 눌러 시작하세요")}
           </div>
         </div>
 

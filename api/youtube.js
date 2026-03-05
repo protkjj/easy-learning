@@ -93,13 +93,13 @@ export default async function handler(req, res) {
     let windowTexts = [];
 
     for (const seg of timedSegments) {
-      if (seg.start >= windowStart + windowSec && windowTexts.length > 0) {
+      while (seg.start >= windowStart + windowSec && windowTexts.length > 0) {
         grouped.push({
           start: windowStart,
           duration: windowSec,
           text: windowTexts.join(" "),
         });
-        windowStart = Math.floor(seg.start / windowSec) * windowSec;
+        windowStart += windowSec;
         windowTexts = [];
       }
       windowTexts.push(seg.text);

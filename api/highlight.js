@@ -15,6 +15,8 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: "text 또는 segments가 필요합니다." });
   }
 
+  // HuggingFace Spaces URL 또는 로컬 서버
+  // Vercel 환경변수에서 설정: INFERENCE_SERVER_URL=https://<username>-easy-learning-inference.hf.space
   const serverUrl =
     process.env.INFERENCE_SERVER_URL || "http://localhost:8000";
 

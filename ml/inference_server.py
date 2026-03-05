@@ -27,12 +27,23 @@ FALLBACK_DIR = Path(__file__).parent / "output" / "best_model"
 
 app = FastAPI(title="핵심 구간 추론 서버")
 
+ALLOWED_ORIGINS = os.environ.get("ALLOWED_ORIGINS", "").split(",")
+if not ALLOWED_ORIGINS or ALLOWED_ORIGINS == [""]:
+    ALLOWED_ORIGINS = [
+        "https://lectureai-app-dusky.vercel.app",
+        "https://protkjj.github.io",
+        "http://localhost:5173",
+        "http://localhost:3000",
+    ]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=ALLOWED_ORIGINS,
+    allow_methods=["GET", "POST"],
+    allow_headers=["Content-Type"],
 )
+
+MAX_TEXT_LENGTH = 10_000
 
 # 전역 모델/토크나이저
 session = None
@@ -205,6 +216,14 @@ async def analyze(body: dict):
     프론트엔드에서 직접 호출할 수 있는 간편 API."""
     text = body.get("text", "")
     timed_segments = body.get("segments")
+
+    # 텍스트 길이 제한
+    if text and len(text) > MAX_TEXT_LENGTH:
+        text = text[:MAX_TEXT_LENGTH]
+    if timed_segments:
+        total_len = sum(len(s.get("text", "")) for s in timed_segments)
+        if total_len > MAX_TEXT_LENGTH:
+            return {"error": f"텍스트 총 길이가 {MAX_TEXT_LENGTH}자를 초과합니다.", "total": 0, "results": []}
 
     if timed_segments:
         # 타임스탬프 정보가 있는 세그먼트 사용

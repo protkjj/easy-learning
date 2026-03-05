@@ -110,10 +110,13 @@ export function YouTube() {
   };
 
   // 핵심 구간 분석
+  const [isFallback, setIsFallback] = useState(false);
+
   const handleAnalyze = async () => {
     if ((!transcript.trim() && segments.length === 0) || analyzing) return;
 
     setAnalyzing(true);
+    setIsFallback(false);
 
     try {
       const body: { text?: string; segments?: typeof segments } = {};
@@ -133,12 +136,16 @@ export function YouTube() {
 
       if (!res.ok) {
         toast.error(data.error || "핵심 구간 분석에 실패했습니다.");
-        setAnalyzing(false);
         return;
       }
 
       setHighlights(data.results || []);
       setShowHighlights(true);
+
+      if (data.fallback) {
+        setIsFallback(true);
+        toast.info("키워드 기반 분석입니다. ML 모델 서버 연결 시 더 정확한 분석이 가능합니다.");
+      }
 
       const importantCount = data.important_count || 0;
       const total = data.total || 0;
@@ -147,9 +154,9 @@ export function YouTube() {
       );
     } catch {
       toast.error("핵심 구간 분석에 실패했습니다.");
+    } finally {
+      setAnalyzing(false);
     }
-
-    setAnalyzing(false);
   };
 
   // AI 필기 생성
@@ -327,6 +334,11 @@ export function YouTube() {
                     핵심 {importantCount}개
                   </span>
                   <span>전체 {highlights.length}개 구간</span>
+                  {isFallback && (
+                    <span className="px-2 py-0.5 bg-orange-100 text-orange-600 rounded-full">
+                      키워드 기반
+                    </span>
+                  )}
                   <div className="flex-1" />
                   <span className="flex items-center gap-1.5">
                     <span className="w-3 h-3 rounded bg-amber-100 border border-amber-300" />

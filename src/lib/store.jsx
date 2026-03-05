@@ -66,8 +66,14 @@ export function AppProvider({ children }) {
   };
 
   const startTimer = () => {
-    setElapsed(0);
+    if (timerRef.current) clearInterval(timerRef.current);
     timerRef.current = setInterval(() => setElapsed((e) => e + 1), 1000);
+  };
+
+  const resetTimer = () => {
+    if (timerRef.current) clearInterval(timerRef.current);
+    timerRef.current = null;
+    setElapsed(0);
   };
 
   const stopTimer = () => {
@@ -106,7 +112,7 @@ export function AppProvider({ children }) {
         aiProvider, updateProvider,
         apiKey,
         notes, setNotes, addNote,
-        elapsed, setElapsed, startTimer, stopTimer, timerRef,
+        elapsed, setElapsed, startTimer, stopTimer, resetTimer, timerRef,
         totalElapsed, setTotalElapsed,
         wrongAnswers, addWrongAnswer, updateWrongAnswer,
       }}
