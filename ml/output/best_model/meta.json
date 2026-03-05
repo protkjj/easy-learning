@@ -1,0 +1,26 @@
+{
+  "model_name": "klue/roberta-large",
+  "max_len": 256,
+  "num_labels": 2,
+  "id2label": {
+    "0": "비중요",
+    "1": "중요"
+  },
+  "eval_metrics": {
+    "eval_loss": 0.3953728675842285,
+    "eval_f1": 0.717948717948718,
+    "eval_accuracy": 0.8829787234042553,
+    "eval_precision": 0.6774193548387096,
+    "eval_recall": 0.7636363636363637,
+    "eval_runtime": 0.9298,
+    "eval_samples_per_second": 303.275,
+    "eval_steps_per_second": 19.358,
+    "epoch": 5.0
+  },
+  "train_samples": 1125,
+  "eval_samples": 282,
+  "class_weights": {
+    "0": 0.6203703703703703,
+    "1": 2.576923076923077
+  }
+}

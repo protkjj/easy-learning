@@ -1,0 +1,70 @@
+============================================================
+유튜브 자막 핵심 구간 분류 모델 학습
+============================================================
+GPU: NVIDIA GeForce RTX 5070 Ti (16.6GB)
+Device: cuda
+모델: klue/roberta-large
+
+데이터 로드 중...
+총 샘플: 1407개
+중요(1): 273개 (19.4%)
+비중요(0): 1134개 (80.6%)
+클래스 가중치: {0: 0.6203703703703703, 1: 2.576923076923077}
+
+Train: 1125개, Eval: 282개
+
+토크나이저 로드: klue/roberta-large
+모델 로드: klue/roberta-large
+
+============================================================
+학습 시작
+  Epochs: 15
+  Batch size: 16
+  Learning rate: 1e-05
+  Max length: 256
+  FP16: True
+============================================================
+
+{'eval_loss': '0.5994', 'eval_f1': '0.4522', 'eval_accuracy': '0.5532', 'eval_precision': '0.2971', 'eval_recall': '0.9455', 'eval_runtime': '0.9123', 'eval_samples_per_second': '309.1', 'eval_steps_per_second': '19.73', 'epoch': '1'}
+{'loss': '1.211', 'grad_norm': '4.382', 'learning_rate': '9.074e-06', 'epoch': '1.394'}
+{'eval_loss': '0.4155', 'eval_f1': '0.6184', 'eval_accuracy': '0.7943', 'eval_precision': '0.4845', 'eval_recall': '0.8545', 'eval_runtime': '0.9202', 'eval_samples_per_second': '306.4', 'eval_steps_per_second': '19.56', 'epoch': '2'}
+{'loss': '0.8082', 'grad_norm': '4.612', 'learning_rate': '9.074e-06', 'epoch': '2.789'}
+{'eval_loss': '0.3955', 'eval_f1': '0.7179', 'eval_accuracy': '0.883', 'eval_precision': '0.6774', 'eval_recall': '0.7636', 'eval_runtime': '0.8828', 'eval_samples_per_second': '319.4', 'eval_steps_per_second': '20.39', 'epoch': '3'}
+{'eval_loss': '0.5107', 'eval_f1': '0.6733', 'eval_accuracy': '0.883', 'eval_precision': '0.7391', 'eval_recall': '0.6182', 'eval_runtime': '0.8825', 'eval_samples_per_second': '319.6', 'eval_steps_per_second': '20.4', 'epoch': '4'}
+{'loss': '0.5007', 'grad_norm': '4.536', 'learning_rate': '8.045e-06', 'epoch': '4.169'}
+{'eval_loss': '0.6241', 'eval_f1': '0.6972', 'eval_accuracy': '0.883', 'eval_precision': '0.7037', 'eval_recall': '0.6909', 'eval_runtime': '0.8769', 'eval_samples_per_second': '321.6', 'eval_steps_per_second': '20.53', 'epoch': '5'}
+{'train_runtime': '69.84', 'train_samples_per_second': '241.6', 'train_steps_per_second': '7.732', 'train_loss': '0.7585', 'epoch': '5'}
+
+============================================================
+학습 완료
+  Total steps: 180
+  Training loss: 0.7585
+============================================================
+
+최종 평가:
+  eval_loss: 0.3954
+  eval_f1: 0.7179
+  eval_accuracy: 0.8830
+  eval_precision: 0.6774
+  eval_recall: 0.7636
+  eval_runtime: 0.9298
+  eval_samples_per_second: 303.2750
+  eval_steps_per_second: 19.3580
+  epoch: 5.0000
+
+Classification Report:
+              precision    recall  f1-score   support
+
+         비중요     0.9409    0.9119    0.9262       227
+          중요     0.6774    0.7636    0.7179        55
+
+    accuracy                         0.8830       282
+   macro avg     0.8092    0.8378    0.8221       282
+weighted avg     0.8895    0.8830    0.8856       282
+
+
+모델 저장: /home/kj/Desktop/easy_learning/lectureai-app/ml/output/best_model
+
+=== 완료 ===
+모델 저장 위치: /home/kj/Desktop/easy_learning/lectureai-app/ml/output/best_model
+학습 로그: /home/kj/Desktop/easy_learning/lectureai-app/ml/output/training_log.txt

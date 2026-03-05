@@ -23,3 +23,10 @@ dist-ssr
 *.sln
 *.sw?
 .vercel
+
+# ML
+ml/.venv/
+ml/output/best_model/*.safetensors
+ml/output/best_model/training_args.bin
+ml/output/onnx_model/model.onnx
+ml/output/checkpoints/

@@ -1,0 +1,11 @@
+torch>=2.0
+transformers>=4.40
+datasets
+scikit-learn
+youtube-transcript-api
+yt-dlp
+tqdm
+onnx
+onnxruntime
+fastapi
+uvicorn

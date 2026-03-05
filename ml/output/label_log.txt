@@ -1,0 +1,25 @@
+총 20개 영상 라벨링 시작...
+
+=== 라벨링 결과 ===
+전체 세그먼트: 1407개
+  - 중요(1): 273개
+  - 비중요(0): 1134개
+
+Confidence 분포:
+  0.50: 1119개
+  0.70: 86개
+  0.80: 3개
+  0.85: 199개
+
+라벨링 방법 분포:
+  heuristic: 1119개
+  chapter: 184개
+  emphasis: 89개
+  chapter_unimportant: 15개
+
+학습 데이터 (confidence >= 0.6): 288개
+  - 중요(1): 273개
+  - 비중요(0): 15개
+  - 비율 (0:1): 0.1:1
+
+데이터셋 저장: /home/kj/Desktop/easy_learning/lectureai-app/ml/output/dataset.json

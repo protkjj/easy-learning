@@ -64,18 +64,63 @@ export default async function handler(req, res) {
     const captionRes = await fetch(track.baseUrl);
     const xml = await captionRes.text();
 
-    // Parse XML to plain text
-    const transcript = xml
-      .replace(/<[^>]+>/g, " ")
-      .replace(/&amp;/g, "&")
-      .replace(/&lt;/g, "<")
-      .replace(/&gt;/g, ">")
-      .replace(/&quot;/g, '"')
-      .replace(/&#39;/g, "'")
-      .replace(/\s+/g, " ")
-      .trim();
+    // Parse XML to timed segments
+    const segmentRegex = /<text\s+start="([^"]*)"(?:\s+dur="([^"]*)")?[^>]*>([\s\S]*?)<\/text>/g;
+    const timedSegments = [];
+    let m;
+    while ((m = segmentRegex.exec(xml)) !== null) {
+      const text = m[3]
+        .replace(/&amp;/g, "&")
+        .replace(/&lt;/g, "<")
+        .replace(/&gt;/g, ">")
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'")
+        .replace(/\s+/g, " ")
+        .trim();
+      if (text) {
+        timedSegments.push({
+          start: parseFloat(m[1]) || 0,
+          duration: parseFloat(m[2]) || 0,
+          text,
+        });
+      }
+    }
 
-    return res.status(200).json({ transcript, title, videoId });
+    // Group into 30-second windows for highlight analysis
+    const windowSec = 30;
+    const grouped = [];
+    let windowStart = 0;
+    let windowTexts = [];
+
+    for (const seg of timedSegments) {
+      if (seg.start >= windowStart + windowSec && windowTexts.length > 0) {
+        grouped.push({
+          start: windowStart,
+          duration: windowSec,
+          text: windowTexts.join(" "),
+        });
+        windowStart = Math.floor(seg.start / windowSec) * windowSec;
+        windowTexts = [];
+      }
+      windowTexts.push(seg.text);
+    }
+    if (windowTexts.length > 0) {
+      grouped.push({
+        start: windowStart,
+        duration: windowSec,
+        text: windowTexts.join(" "),
+      });
+    }
+
+    // Plain text transcript (기존 호환)
+    const transcript = timedSegments.map((s) => s.text).join(" ");
+
+    return res.status(200).json({
+      transcript,
+      title,
+      videoId,
+      segments: grouped,
+    });
   } catch (error) {
     return res
       .status(500)
